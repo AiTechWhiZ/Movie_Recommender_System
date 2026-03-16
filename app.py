@@ -6,6 +6,7 @@ from functools import lru_cache
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+# create a requests Session with retries (mounted once)
 session = requests.Session()
 retries = Retry(total=3, backoff_factor=0.6, status_forcelist=[429, 500, 502, 503, 504], allowed_methods=["GET"])
 adapter = HTTPAdapter(max_retries=retries)
@@ -95,6 +96,7 @@ except FileNotFoundError:
 
 st.title("Movie Recommender System")
 
+# load query params to allow shareable links like ?movie=The+Matrix
 params = st.query_params
 initial_movie = params.get("movie", [None])[0]
 select_index = 0
@@ -106,6 +108,7 @@ if initial_movie:
 
 selected_movie_name = st.selectbox("Select a Movie", movies['title'].values, index=select_index)
 
+# small responsive grid and lazy-loading CSS
 st.markdown(
     """
     <style>
@@ -119,12 +122,14 @@ st.markdown(
 )
 
 if st.button("Recommend"):
+    # spinner + progress bar while fetching
     with st.spinner("Fetching recommendations..."):
         progress_bar = st.progress(0)
         def _progress(p):
             progress_bar.progress(p)
         names, posters = recommend(selected_movie_name, progress_callback=_progress)
 
+    # export CSV (no details columns)
     df_export = pd.DataFrame({
         "title": names,
         "poster": posters,
@@ -132,6 +137,7 @@ if st.button("Recommend"):
     csv_bytes = df_export.to_csv(index=False).encode("utf-8")
     st.download_button("Download recommendations (CSV)", csv_bytes, file_name=f"Recommendations_for_{selected_movie_name}.csv", mime="text/csv")
 
+    # Render responsive grid. lazy-loading posters, no details buttons
     n = min(len(names), len(posters), 8)
     grid_html = "<div class='rec-grid'>"
     for idx in range(n):
